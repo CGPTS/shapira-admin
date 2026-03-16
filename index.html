@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פאנל ניהול - אולם מרכז שפירא</title>
+    <link rel="stylesheet" href="css/admin-style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Login Screen -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-card">
+            <h1>🔐 פאנל ניהול</h1>
+            <h2>אולם מרכז שפירא</h2>
+            <div class="login-form">
+                <label for="adminPassword">סיסמת מנהל:</label>
+                <input type="password" id="adminPassword" placeholder="הכנס סיסמה" onkeypress="if(event.key==='Enter') adminLogin()">
+                <button class="btn btn-login" onclick="adminLogin()">כניסה</button>
+                <p class="login-error" id="loginError" style="display:none;">❌ סיסמה שגויה</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div class="admin-panel" id="adminPanel" style="display:none;">
+
+        <!-- Header -->
+        <header class="admin-header">
+<div class="header-actions">
+    <button class="btn btn-notifications" onclick="toggleNotifications()">🔔 התראות (<span id="notifCount">0</span>)</button>
+    
+    <button class="btn btn-add-event" onclick="openAddEventModal()">➕ הוסף אירוע</button>
+    <button class="btn btn-logout" onclick="adminLogout()">יציאה 🚪</button>
+</div>
+        </header>
+
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat-card">
+                <span class="stat-number" id="statTotal">0</span>
+                <span class="stat-label">סה"כ הזמנות</span>
+            </div>
+            <div class="stat-card approved">
+                <span class="stat-number" id="statApproved">0</span>
+                <span class="stat-label">פעילות</span>
+            </div>
+            <div class="stat-card completed">
+                <span class="stat-number" id="statCompleted">0</span>
+                <span class="stat-label">הסתיימו</span>
+            </div>
+            <div class="stat-card cancelled">
+                <span class="stat-number" id="statCancelled">0</span>
+                <span class="stat-label">מבוטלות</span>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('calendar')">📅 לוח שנה</button>
+            <button class="tab" onclick="switchTab('bookings')">📋 כל ההזמנות</button>
+        </div>
+
+        <!-- Calendar View -->
+        <div class="tab-content active" id="calendarTab">
+            <div class="admin-card">
+                <div class="calendar-nav">
+                    <button class="btn-nav" id="adminPrevMonth">→ חודש קודם</button>
+                    <h2 id="adminCurrentMonth"></h2>
+                    <button class="btn-nav" id="adminNextMonth">חודש הבא ←</button>
+                </div>
+                <div class="calendar-legend">
+                    <span class="legend-item"><span class="legend-dot green"></span> פנוי</span>
+                    <span class="legend-item"><span class="legend-dot red"></span> תפוס</span>
+                    <span class="legend-item"><span class="legend-dot orange"></span> ממתין</span>
+                </div>
+                <div class="admin-calendar-grid" id="adminCalendarGrid">
+                    <div class="cal-header">ראשון</div>
+                    <div class="cal-header">שני</div>
+                    <div class="cal-header">שלישי</div>
+                    <div class="cal-header">רביעי</div>
+                    <div class="cal-header">חמישי</div>
+                    <div class="cal-header">שישי</div>
+                    <div class="cal-header">שבת</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bookings List View -->
+        <div class="tab-content" id="bookingsTab">
+            <div class="admin-card">
+                <div class="filter-bar">
+                    <select id="statusFilter" onchange="filterBookings()">
+                        <option value="active">הזמנות פעילות</option>
+                        <option value="all">כל ההזמנות</option>
+                        <option value="completed">הסתיימו</option>
+                        <option value="cancelled">מבוטלות</option>
+                    </select>
+                    <input type="text" id="searchInput" placeholder="חיפוש לפי שם או טלפון..." oninput="filterBookings()">
+                </div>
+                <div class="bookings-list" id="bookingsList"></div>
+            </div>
+        </div>
+<div class="notifications-sidebar" id="notificationsSidebar">
+    <div class="sidebar-header">
+        <h2>🔔 אירועים קרובים (14 ימים)</h2>
+        <button class="btn-close" onclick="toggleNotifications()" style="color: white;">✕</button>
+    </div>
+    <div class="sidebar-content" id="notificationsList">
+        </div>
+</div>
+    </div>
+
+    <!-- Booking Detail Modal -->
+    <div class="modal-overlay" id="bookingModal" style="display:none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="modalTitle">פרטי הזמנה</h2>
+                <button class="btn-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-actions" id="modalActions"></div>
+        </div>
+    </div>
+
+    <!-- Add Event Modal -->
+    <div class="modal-overlay" id="addEventModal" style="display:none;">
+        <div class="modal-card modal-card-large">
+            <div class="modal-header">
+                <h2>➕ הוספת אירוע חדש</h2>
+                <button class="btn-close" onclick="closeAddEventModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="addEventForm" onsubmit="return false;">
+                    <div class="form-group">
+                        <label>👤 שם מלא <span class="required">*</span></label>
+                        <input type="text" id="eventFullName" required placeholder="הכנס שם מלא">
+                    </div>
+                    <div class="form-group">
+                        <label>📱 טלפון <span class="required">*</span></label>
+                        <input type="tel" id="eventPhone" required placeholder="050-0000000">
+                    </div>
+                    <div class="form-group">
+                        <label>🎉 סוג אירוע <span class="required">*</span></label>
+                        <select id="eventType" required>
+                            <option value="">בחר סוג אירוע</option>
+                            <option value="חתונה">חתונה</option>
+                            <option value="בר מצווה">בר מצווה</option>
+                            <option value="בת מצווה">בת מצווה</option>
+                            <option value="ברית">ברית</option>
+                            <option value="אירוס/שידוך">אירוס/שידוך</option>
+                            <option value="יום הולדת">יום הולדת</option>
+                            <option value="אירוע עסקי">אירוע עסקי</option>
+                            <option value="אירוע קהילתי">אירוע קהילתי</option>
+                            <option value="אחר">אחר</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>🏠 סיווג</label>
+                        <select id="eventResident">
+                            <option value="תושב המושב">תושב המושב</option>
+                            <option value="תושב חוץ">תושב חוץ</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>📅 תאריך <span class="required">*</span></label>
+                        <input type="date" id="eventDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>⏰ משמרת <span class="required">*</span></label>
+                        <select id="eventSlot" required>
+                            <option value="">בחר משמרת</option>
+                            <option value="morning">בוקר (08:00-16:00)</option>
+                            <option value="evening">ערב (17:00-01:00)</option>
+                            <option value="weekend">סופ"ש (שישי 14:00 - שבת 23:00)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>🎥 מקרן ומסך</label>
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="eventProjector">
+                            <label for="eventProjector">כן, הוסף מקרן ומסך (+₪200)</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>💰 מחיר (₪)</label>
+                        <div style="background: #f0f7f0; padding: 12px; border-radius: 10px; margin-bottom: 12px;">
+                            <div id="priceBreakdown" style="font-weight: 700; color: #2e7d32; text-align: center; font-size: 16px;">בחר סוג תושב ומשמרת</div>
+                        </div>
+                        <input type="number" id="eventPrice" placeholder="מחיר יחושב אוטומטית" min="0" readonly style="background: #f5f5f5; cursor: not-allowed;">
+                        <small style="color: #888; display: block; margin-top: 8px;">* המחיר יחושב אוטומטית בהתאם לבחירתך</small>
+                    </div>
+                    <div class="form-group">
+                        <label>📝 הערות</label>
+                        <textarea id="eventNotes" rows="3" placeholder="הערות נוספות..."></textarea>
+                    </div>
+
+                    <!-- Availability check message -->
+                    <div id="slotAvailabilityMsg" class="availability-msg" style="display:none;"></div>
+                </form>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-approve" onclick="submitNewEvent()">✅ הוסף אירוע</button>
+                <button class="btn btn-secondary" onclick="closeAddEventModal()">ביטול</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <script src="js/firebase-config.js"></script>
+    <script src="js/admin-app.js"></script>
+</body>
+</html>
